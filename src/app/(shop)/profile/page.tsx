@@ -15,7 +15,7 @@ function getLevelBadge(level: number) {
 }
 
 function getNextLevel(level: number) {
-  return (Math.floor(level / 5) + 1) * 5
+  return level + 1
 }
 
 export default function ProfilePage() {
@@ -40,7 +40,7 @@ export default function ProfilePage() {
 
   const levelInfo = getLevelBadge(userData.level)
   const nextLevel = getNextLevel(userData.level)
-  const progress = userData.level > 0 ? ((userData.level % 5) / 5) * 100 : (userData.totalSpent / 2000) * 100
+  const progress = ((userData.totalSpent % 2000) / 2000) * 100
   const nextLevelSpent = nextLevel * 2000
 
   return (
@@ -80,9 +80,7 @@ export default function ProfilePage() {
         <div className="mt-4">
           <div className="flex justify-between text-sm text-gray-500 mb-1">
             <span>累计消费：{formatPrice(userData.totalSpent)}</span>
-            {userData.level < 5 && (
-              <span>距下一级还需消费 {formatPrice(nextLevelSpent - userData.totalSpent)}</span>
-            )}
+            <span>距下一级还需消费 {formatPrice(nextLevelSpent - userData.totalSpent)}</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div

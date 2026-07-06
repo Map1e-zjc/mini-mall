@@ -41,13 +41,22 @@ export async function POST() {
     return NextResponse.json({ message: "购物车是空的" }, { status: 400 })
   }
 
+  // 检查库存
+  for (const item of cartItems) {
+    if (item.product.stock < item.quantity) {
+      return NextResponse.json({
+        message: `"${item.product.name}" 库存不足（剩余 ${item.product.stock}）`,
+      }, { status: 400 })
+    }
+  }
+
   // 计算总价
   const total = cartItems.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0
   )
 
-  // 事务：创建订单 + 订单项 + 清空购物车
+  // 事务：创建订单 + 订单项 + 扣减库存 + 清空购物车
   const order = await prisma.$transaction(async (tx) => {
     // 创建订单
     const newOrder = await tx.order.create({
@@ -65,6 +74,14 @@ export async function POST() {
       },
       include: { items: { include: { product: true } } },
     })
+
+    // 扣减库存
+    for (const item of cartItems) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { decrement: item.quantity } },
+      })
+    }
 
     // 清空购物车
     await tx.cartItem.deleteMany({ where: { userId } })

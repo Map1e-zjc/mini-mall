@@ -42,7 +42,10 @@ export async function PATCH(
     return NextResponse.json({ message: "无效的状态" }, { status: 400 })
   }
 
-  const order = await prisma.order.findUnique({ where: { id: Number(id) } })
+  const order = await prisma.order.findUnique({
+    where: { id: Number(id) },
+    include: { items: true },
+  })
   if (!order) {
     return NextResponse.json({ message: "订单不存在" }, { status: 404 })
   }
@@ -63,6 +66,28 @@ export async function PATCH(
         await tx.user.update({
           where: { id: order.userId },
           data: { totalSpent: newTotalSpent, level: newLevel },
+        })
+      }
+
+      return updatedOrder
+    })
+
+    return NextResponse.json({ order: updated })
+  }
+
+  // 取消订单时恢复库存
+  if (status === "cancelled" && order.status !== "cancelled") {
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: Number(id) },
+        data: { status: "cancelled" },
+        include: { items: { include: { product: true } }, user: { select: { name: true } } },
+      })
+
+      for (const item of order.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
         })
       }
 
